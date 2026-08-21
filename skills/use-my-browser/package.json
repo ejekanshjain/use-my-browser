@@ -1,0 +1,14 @@
+{
+  "name": "use-my-browser",
+  "private": true,
+  "type": "module",
+  "description": "Agent skill that drives your real Chrome, Chromium, or Brave profile over CDP with Playwright.",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ejekanshjain/use-my-browser.git"
+  },
+  "dependencies": {
+    "playwright-core": "^1.62.1"
+  }
+}
