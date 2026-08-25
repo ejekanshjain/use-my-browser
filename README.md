@@ -2,7 +2,7 @@
 
 Agent skill that connects Grok, Claude Code, Codex, Cursor, and other SKILL.md-compatible agents to **your real Chrome, Chromium, or Brave profile** over Chrome DevTools Protocol.
 
-The agent launches the browser with remote debugging, attaches with Playwright (`connectOverCDP`), and then clicks, types, inspects, reads text, and takes screenshots in the live window. Your signed-in sessions stay intact. Known multi-step flows run in one batched script so the agent is not doing one click per turn.
+The agent launches the browser with remote debugging, attaches with Playwright (`connectOverCDP`), and then clicks, types, inspects, reads text, and takes screenshots in the live window. Your signed-in sessions stay intact. Known multi-step flows run in one batched script so the agent is not doing one click per turn. Driver scripts print a result, disconnect from CDP, and exit; only the launched browser stays running.
 
 ## Install
 
@@ -57,6 +57,7 @@ No Playwright browser download is needed. It talks to the browser you already ha
 skills/use-my-browser/
   SKILL.md                 # agent instructions
   scripts/detect-browsers.mjs
+  scripts/wait-cdp.mjs     # poll until 127.0.0.1:9222 answers
   scripts/connect.mjs      # chromium.connectOverCDP('http://127.0.0.1:9222')
   scripts/inspect.mjs      # cheap page inventory (url, controls, aria)
   scripts/eval.mjs         # run JavaScript in the live tab
@@ -76,11 +77,14 @@ Detect finds executables and profiles on Linux, macOS, and Windows. Launch looks
 
 If that browser is already open without debugging, Chromium will refuse a second process on the same profile. Quit it first, then launch with the flags above.
 
+After launch, wait with `node scripts/wait-cdp.mjs` instead of a shell sleep loop. Playwright's CDP client keeps Node alive until it disconnects, so every driver script disconnects and `process.exit`s after printing — otherwise the agent waits on a finished task.
+
 When the steps are already known, run them together:
 
 ```json
 [
   {"op": "goto", "url": "https://example.com/login"},
+  {"op": "clickIf", "role": "button", "name": "Accept all"},
   {"op": "fill", "label": "Email", "text": "user@example.com"},
   {"op": "fill", "label": "Password", "text": "secret"},
   {"op": "click", "role": "button", "name": "Sign in"},
