@@ -1,6 +1,17 @@
+import { mkdirSync } from "node:fs";
+import os from "node:os";
+import path from "node:path";
 import { chromium } from "playwright-core";
 
 const CDP_URL = process.env.CDP_URL || "http://127.0.0.1:9222";
+const TIMEOUT = Number(process.env.UMB_TIMEOUT || 15000);
+
+export function shotDir() {
+  const dir = path.join(os.tmpdir(), "use-my-browser");
+  mkdirSync(dir, { recursive: true });
+  process.env.SHOT_DIR = dir;
+  return dir;
+}
 
 export async function connect() {
   const browser = await chromium.connectOverCDP(CDP_URL);
@@ -13,8 +24,9 @@ export async function connect() {
   const pages = context.pages();
   const page = pages.at(-1) ?? (await context.newPage());
 
-  page.setDefaultTimeout(60000);
-  page.setDefaultNavigationTimeout(60000);
+  page.setDefaultTimeout(TIMEOUT);
+  page.setDefaultNavigationTimeout(TIMEOUT);
 
-  return { browser, context, page };
+  shotDir();
+  return { browser, context, page, timeout: TIMEOUT };
 }

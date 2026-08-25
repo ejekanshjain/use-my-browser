@@ -1,22 +1,22 @@
 #!/usr/bin/env node
-import { mkdirSync } from "node:fs";
-import os from "node:os";
-import path from "node:path";
+import { readFile } from "node:fs/promises";
+import { resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import { connect } from "./connect.mjs";
 
 const taskFile = process.argv[2];
 if (!taskFile) {
-  console.error("usage: node scripts/run.mjs <task.mjs>");
+  console.error("usage: node scripts/run.mjs <task.mjs|--stdin>");
   process.exit(1);
 }
 
-const shotDir = path.join(os.tmpdir(), "use-my-browser");
-mkdirSync(shotDir, { recursive: true });
-process.env.SHOT_DIR = shotDir;
+const href =
+  taskFile === "-" || taskFile === "--stdin"
+    ? `data:text/javascript;base64,${Buffer.from(await readFile("/dev/stdin", "utf8")).toString("base64")}`
+    : pathToFileURL(resolve(taskFile)).href;
 
 const { browser, context, page } = await connect();
-const mod = await import(pathToFileURL(path.resolve(taskFile)).href);
+const mod = await import(href);
 const run = mod.default ?? mod.run;
 
 if (typeof run !== "function") {

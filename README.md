@@ -2,7 +2,7 @@
 
 Agent skill that connects Grok, Claude Code, Codex, Cursor, and other SKILL.md-compatible agents to **your real Chrome, Chromium, or Brave profile** over Chrome DevTools Protocol.
 
-The agent launches the browser with remote debugging, attaches with Playwright (`connectOverCDP`), and then clicks, types, inspects, reads text, and takes screenshots in the live window. Your signed-in sessions stay intact.
+The agent launches the browser with remote debugging, attaches with Playwright (`connectOverCDP`), and then clicks, types, inspects, reads text, and takes screenshots in the live window. Your signed-in sessions stay intact. Known multi-step flows run in one batched script so the agent is not doing one click per turn.
 
 ## Install
 
@@ -58,7 +58,10 @@ skills/use-my-browser/
   SKILL.md                 # agent instructions
   scripts/detect-browsers.mjs
   scripts/connect.mjs      # chromium.connectOverCDP('http://127.0.0.1:9222')
-  scripts/run.mjs          # run a short task module against the live tab
+  scripts/inspect.mjs      # cheap page inventory (url, controls, aria)
+  scripts/eval.mjs         # run JavaScript in the live tab
+  scripts/batch.mjs        # many actions in one CDP session
+  scripts/run.mjs          # Playwright task module against the live tab
 ```
 
 Detect finds executables and profiles on Linux, macOS, and Windows. Launch looks like this:
@@ -73,15 +76,31 @@ Detect finds executables and profiles on Linux, macOS, and Windows. Launch looks
 
 If that browser is already open without debugging, Chromium will refuse a second process on the same profile. Quit it first, then launch with the flags above.
 
-Task scripts look like this:
+When the steps are already known, run them together:
+
+```json
+[
+  {"op": "goto", "url": "https://example.com/login"},
+  {"op": "fill", "label": "Email", "text": "user@example.com"},
+  {"op": "fill", "label": "Password", "text": "secret"},
+  {"op": "click", "role": "button", "name": "Sign in"},
+  {"op": "wait", "url": "**/dashboard"}
+]
+```
+
+```bash
+node scripts/batch.mjs /tmp/use-my-browser/actions.json
+node scripts/inspect.mjs
+node scripts/eval.mjs 'document.title'
+```
+
+Task modules are for branching or Playwright-only APIs:
 
 ```js
 export default async function ({ page }) {
-  await page.goto('https://example.com')
+  await page.goto('https://example.com', { waitUntil: 'domcontentloaded' })
   const text = await page.locator('h1').innerText()
-  const shot = `${process.env.SHOT_DIR}/page.png`
-  await page.screenshot({ path: shot })
-  return { text, shot }
+  return { text, url: page.url() }
 }
 ```
 
